@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numberwang - The Game!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NUMBERWANG!</h1>
+            <p class="subtitle">That's a number!</p>
+        </header>
+
+        <div class="numbers-grid" id="numbers-grid">
+            <!-- Numbers will be dynamically generated here -->
+        </div>
+
+        <div class="game-info">
+            <div class="scoreboard">
+                <div class="player-score">
+                    <h3>Player 1</h3>
+                    <span id="score1">0</span>
+                </div>
+                <div class="round-info">
+                    <div class="round">Round <span id="round">1</span>/3</div>
+                    <div class="current-player">Player <span id="current-player">1</span>'s Turn</div>
+                    <div class="timer">Time: <span id="timer">10</span>s</div>
+                </div>
+                <div class="player-score">
+                    <h3>Player 2</h3>
+                    <span id="score2">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="announcer" id="announcer">
+            Welcome to Numberwang! Player 1, choose your numbers!
+        </div>
+
+        <div class="controls">
+            <button id="start-game" class="btn">Start Game</button>
+            <button id="next-round" class="btn" style="display: none;">Next Round</button>
+            <button id="new-game" class="btn" style="display: none;">New Game</button>
+        </div>
+
+        <div class="game-over" id="game-over" style="display: none;">
+            <h2 id="winner-text"></h2>
+            <p id="final-score"></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
