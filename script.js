@@ -4,7 +4,7 @@ class NumberwangGame {
             round: 1,
             currentPlayer: 1,
             scores: { 1: 0, 2: 0 },
-            timer: 10,
+            timer: 8,
             numbers: [],
             gameActive: false,
             gameOver: false,
@@ -29,6 +29,7 @@ class NumberwangGame {
             announcer: document.getElementById('announcer'),
             numbersGrid: document.getElementById('numbers-grid'),
             startGame: document.getElementById('start-game'),
+            player2Ready: document.getElementById('player2-ready'),
             nextRound: document.getElementById('next-round'),
             newGame: document.getElementById('new-game'),
             gameOver: document.getElementById('game-over'),
@@ -39,6 +40,7 @@ class NumberwangGame {
 
     bindEvents() {
         this.elements.startGame.addEventListener('click', () => this.startGame());
+        this.elements.player2Ready.addEventListener('click', () => this.startPlayer2Turn());
         this.elements.nextRound.addEventListener('click', () => this.nextRound());
         this.elements.newGame.addEventListener('click', () => this.resetGame());
     }
@@ -215,7 +217,8 @@ class NumberwangGame {
                 const number = positionToNumber.get(i);
                 
                 const button = document.createElement('button');
-                button.className = 'number-btn';
+                const colorClass = `color-${Math.floor(Math.random() * 8) + 1}`;
+                button.className = `number-btn ${colorClass}`;
                 button.textContent = number;
                 button.addEventListener('click', () => this.numberClicked(number, button));
                 cell.appendChild(button);
@@ -268,6 +271,7 @@ class NumberwangGame {
         if (!this.gameState.gameActive) return;
         
         button.classList.add('clicked');
+        button.textContent = ''; // Clear the number text but keep the background color
         
         if (this.isNumberwang(number)) {
             this.numberwangHit();
@@ -326,7 +330,7 @@ class NumberwangGame {
     }
 
     startTimer() {
-        this.gameState.timer = 10;
+        this.gameState.timer = 8;
         this.elements.timer.textContent = this.gameState.timer;
         
         this.timerInterval = setInterval(() => {
@@ -364,7 +368,7 @@ class NumberwangGame {
         if (this.gameState.currentPlayer === 1) {
             this.gameState.currentPlayer = 2;
             setTimeout(() => {
-                this.startPlayerTurn();
+                this.showPlayer2ReadyButton();
             }, 2000);
         } else {
             // End of round
@@ -372,6 +376,21 @@ class NumberwangGame {
                 this.endRound();
             }, 2000);
         }
+    }
+
+    showPlayer2ReadyButton() {
+        this.elements.announcer.textContent = "Player 1's turn complete. Player 2, click when ready!";
+        this.elements.player2Ready.style.display = 'inline-block';
+    }
+
+    startPlayer2Turn() {
+        this.elements.player2Ready.style.display = 'none';
+        
+        // Generate completely new numbers for Player 2
+        this.gameState.numbers = this.generateNumbers();
+        this.displayNumbers();
+        
+        this.startPlayerTurn();
     }
 
     startPlayerTurn() {
@@ -520,7 +539,7 @@ class NumberwangGame {
             round: 1,
             currentPlayer: 1,
             scores: { 1: 0, 2: 0 },
-            timer: 10,
+            timer: 8,
             numbers: [],
             gameActive: false,
             gameOver: false,
@@ -533,11 +552,12 @@ class NumberwangGame {
         this.updateScore();
         this.elements.round.textContent = 1;
         this.elements.currentPlayer.textContent = 1;
-        this.elements.timer.textContent = 10;
+        this.elements.timer.textContent = 8;
         this.elements.announcer.textContent = "Welcome to Numberwang! Player 1, choose your numbers!";
         this.elements.numbersGrid.innerHTML = '';
         this.elements.gameOver.style.display = 'none';
         this.elements.startGame.style.display = 'inline-block';
+        this.elements.player2Ready.style.display = 'none';
         this.elements.nextRound.style.display = 'none';
         this.elements.newGame.style.display = 'none';
     }
