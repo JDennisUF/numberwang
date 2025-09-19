@@ -287,6 +287,112 @@ header h1 {
     color: #333;
 }
 
+/* Numberwang Overlay */
+#numberwang-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+}
+
+#numberwang-overlay img {
+    width: min(70vw, 700px);
+    max-width: 90vw;
+    height: auto;
+    filter: drop-shadow(0 10px 25px rgba(0,0,0,0.45));
+    transform: scale(0.6) rotate(-6deg);
+    opacity: 0;
+}
+
+#numberwang-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#numberwang-overlay.show img {
+    animation: popFlash 900ms ease-out forwards;
+}
+
+@keyframes popFlash {
+    0% {
+        transform: scale(0.6) rotate(-6deg);
+        opacity: 0;
+        filter: drop-shadow(0 0 0 rgba(255,255,0,0));
+    }
+    20% {
+        transform: scale(1.2) rotate(3deg);
+        opacity: 1;
+        filter: drop-shadow(0 0 40px rgba(255,255,0,0.9));
+    }
+    55% {
+        transform: scale(1) rotate(0deg);
+        filter: drop-shadow(0 0 16px rgba(255,255,0,0.6));
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+        filter: drop-shadow(0 8px 25px rgba(0,0,0,0.45));
+    }
+}
+
+/* Wangernumb Overlay */
+#wangernumb-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 250ms ease;
+}
+
+#wangernumb-overlay img {
+    width: min(72vw, 750px);
+    height: auto;
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+}
+
+#wangernumb-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#wangernumb-overlay.show img {
+    animation: floatWin 1400ms ease-out forwards;
+}
+
+@keyframes floatWin {
+    0% {
+        transform: translateY(20px) scale(0.9);
+        opacity: 0;
+        filter: drop-shadow(0 0 0 rgba(255,255,255,0));
+    }
+    30% {
+        transform: translateY(-6px) scale(1.05);
+        opacity: 1;
+        filter: drop-shadow(0 0 30px rgba(255,255,255,0.8));
+    }
+    60% {
+        transform: translateY(0) scale(1);
+        filter: drop-shadow(0 8px 30px rgba(0,0,0,0.5));
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
 @media (max-width: 768px) {
     header h1 {
         font-size: 2.5rem;

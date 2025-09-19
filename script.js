@@ -10,7 +10,8 @@ class NumberwangGame {
             gameOver: false,
             isWangernumb: false,
             wangernumbTimes: { 1: null, 2: null },
-            wangernumbStartTime: null
+            wangernumbStartTime: null,
+            guaranteedNumberwangValue: null
         };
         
         this.timerInterval = null;
@@ -34,7 +35,9 @@ class NumberwangGame {
             newGame: document.getElementById('new-game'),
             gameOver: document.getElementById('game-over'),
             winnerText: document.getElementById('winner-text'),
-            finalScore: document.getElementById('final-score')
+            finalScore: document.getElementById('final-score'),
+            numberwangOverlay: document.getElementById('numberwang-overlay'),
+            wangernumbOverlay: document.getElementById('wangernumb-overlay')
         };
     }
 
@@ -43,6 +46,22 @@ class NumberwangGame {
         this.elements.player2Ready.addEventListener('click', () => this.startPlayer2Turn());
         this.elements.nextRound.addEventListener('click', () => this.nextRound());
         this.elements.newGame.addEventListener('click', () => this.resetGame());
+
+        // Dismiss Wangernumb overlay when clicking backdrop or pressing Escape
+        const wOverlay = document.getElementById('wangernumb-overlay');
+        if (wOverlay) {
+            wOverlay.addEventListener('click', (e) => {
+                // Only close if clicking the backdrop, not the image
+                if (e.target === wOverlay) {
+                    this.hideWangernumbOverlay();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && wOverlay.classList.contains('show')) {
+                    this.hideWangernumbOverlay();
+                }
+            });
+        }
     }
 
     createSounds() {
@@ -55,34 +74,80 @@ class NumberwangGame {
         }
     }
 
+    ensureAudioReady() {
+        if (!this.audioContext) return false;
+        if (this.audioContext.state === 'suspended') {
+            // Attempt to resume on user interaction
+            this.audioContext.resume().catch(() => {});
+        }
+        return true;
+    }
+
     playNumberwangSound() {
-        if (!this.audioContext) return;
-        
-        // Create a cheerful "ding" sound for Numberwang
-        const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5
-        const duration = 0.8;
-        
-        frequencies.forEach((freq, index) => {
-            const osc = this.audioContext.createOscillator();
-            const gain = this.audioContext.createGain();
-            
-            osc.connect(gain);
-            gain.connect(this.audioContext.destination);
-            
-            osc.frequency.setValueAtTime(freq, this.audioContext.currentTime + index * 0.1);
-            osc.type = 'sine';
-            
-            gain.gain.setValueAtTime(0, this.audioContext.currentTime + index * 0.1);
-            gain.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + index * 0.1 + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + index * 0.1 + duration);
-            
-            osc.start(this.audioContext.currentTime + index * 0.1);
-            osc.stop(this.audioContext.currentTime + index * 0.1 + duration);
+        if (!this.ensureAudioReady()) return;
+
+        const ctx = this.audioContext;
+        const now = ctx.currentTime;
+
+        // Master limiter-like gain to avoid clipping but keep it loud
+        const master = ctx.createGain();
+        master.gain.value = 0.6; // turn up overall
+        master.connect(ctx.destination);
+
+        // Bright triad hit (C6, E6, G6) using detuned saws and a square accent
+        const triad = [1046.5, 1318.5, 1568.0];
+        triad.forEach((f, i) => {
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0, now);
+            g.gain.linearRampToValueAtTime(0.5, now + 0.02 + i * 0.01);
+            g.gain.exponentialRampToValueAtTime(0.01, now + 0.35 + i * 0.01);
+            g.connect(master);
+
+            const osc1 = ctx.createOscillator();
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(f, now);
+            osc1.detune.setValueAtTime(-8, now);
+            osc1.connect(g);
+
+            const osc2 = ctx.createOscillator();
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(f, now);
+            osc2.detune.setValueAtTime(+8, now);
+            osc2.connect(g);
+
+            const osc3 = ctx.createOscillator();
+            osc3.type = 'square';
+            osc3.frequency.setValueAtTime(f * 2, now); // octave accent
+            osc3.connect(g);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc3.start(now + 0.01);
+            osc1.stop(now + 0.4);
+            osc2.stop(now + 0.4);
+            osc3.stop(now + 0.25);
         });
+
+        // Short noise burst for extra "pop"
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / data.length); // simple decay
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.001, now);
+        noiseGain.gain.linearRampToValueAtTime(0.3, now + 0.015);
+        noiseGain.gain.exponentialRampToValueAtTime(0.005, now + 0.2);
+        noise.connect(noiseGain);
+        noiseGain.connect(master);
+        noise.start(now);
+        noise.stop(now + 0.2);
     }
 
     playFailSound() {
-        if (!this.audioContext) return;
+        if (!this.ensureAudioReady()) return;
         
         // Create a "wrong" buzzer sound
         const osc = this.audioContext.createOscillator();
@@ -103,8 +168,36 @@ class NumberwangGame {
         osc.stop(this.audioContext.currentTime + 0.3);
     }
 
+    playThudSound() {
+        if (!this.ensureAudioReady()) return;
+        const ctx = this.audioContext;
+        const now = ctx.currentTime;
+        const gain = ctx.createGain();
+        const osc = ctx.createOscillator();
+        const lowpass = ctx.createBiquadFilter();
+
+        // dull thud: low frequency sine with fast decay, lowpass to remove brightness
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(70, now + 0.2);
+
+        lowpass.type = 'lowpass';
+        lowpass.frequency.setValueAtTime(400, now);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.35, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+
+        osc.connect(lowpass);
+        lowpass.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+    }
+
     playWinSound() {
-        if (!this.audioContext) return;
+        if (!this.ensureAudioReady()) return;
         
         // Create a triumphant fanfare
         const notes = [
@@ -232,6 +325,10 @@ class NumberwangGame {
     }
 
     isNumberwang(number) {
+        // Always guarantee at least one Numberwang per screen
+        if (this.gameState.guaranteedNumberwangValue !== null && number === this.gameState.guaranteedNumberwangValue) {
+            return true;
+        }
         // Convert number to string for analysis
         const numStr = number.toString();
         
@@ -278,12 +375,14 @@ class NumberwangGame {
         } else {
             // Wrong number, continue playing
             this.elements.announcer.textContent = `${number}... not Numberwang!`;
+            this.playThudSound();
         }
     }
 
     numberwangHit() {
         // Play sound effect
         this.playNumberwangSound();
+        this.showNumberwangOverlay();
         
         if (this.gameState.isWangernumb) {
             // Record the time for Wangernumb
@@ -295,6 +394,7 @@ class NumberwangGame {
             
             setTimeout(() => {
                 this.elements.announcer.classList.remove('numberwang');
+                this.hideNumberwangOverlay();
                 
                 if (this.gameState.currentPlayer === 1) {
                     // Start Player 2's turn
@@ -320,13 +420,25 @@ class NumberwangGame {
             // Animate announcer
             this.elements.announcer.textContent = "That's Numberwang!";
             this.elements.announcer.classList.add('numberwang');
+            this.showNumberwangOverlay();
             
             setTimeout(() => {
                 this.elements.announcer.classList.remove('numberwang');
+                this.hideNumberwangOverlay();
             }, 1500);
             
             this.endTurn();
         }
+    }
+
+    showNumberwangOverlay() {
+        if (!this.elements.numberwangOverlay) return;
+        this.elements.numberwangOverlay.classList.add('show');
+    }
+
+    hideNumberwangOverlay() {
+        if (!this.elements.numberwangOverlay) return;
+        this.elements.numberwangOverlay.classList.remove('show');
     }
 
     startTimer() {
@@ -388,6 +500,7 @@ class NumberwangGame {
         
         // Generate completely new numbers for Player 2
         this.gameState.numbers = this.generateNumbers();
+        this.guaranteeNumberwang();
         this.displayNumbers();
         
         this.startPlayerTurn();
@@ -429,6 +542,7 @@ class NumberwangGame {
         this.elements.nextRound.style.display = 'none';
         this.gameState.currentPlayer = 1;
         this.gameState.numbers = this.generateNumbers();
+        this.guaranteeNumberwang();
         this.displayNumbers();
         this.startPlayerTurn();
     }
@@ -452,6 +566,7 @@ class NumberwangGame {
         this.elements.round.textContent = "Wangernumb";
         this.gameState.currentPlayer = 1;
         this.gameState.numbers = this.generateNumbers();
+        this.guaranteeNumberwang();
         this.displayNumbers();
         
         setTimeout(() => {
@@ -481,6 +596,7 @@ class NumberwangGame {
         
         // Generate new numbers for player 2
         this.gameState.numbers = this.generateNumbers();
+        this.guaranteeNumberwang();
         this.displayNumbers();
         
         const buttons = document.querySelectorAll('.number-btn');
@@ -508,12 +624,13 @@ class NumberwangGame {
             loserTime = time1;
         }
         
-        this.playWinSound();
+    this.playWinSound();
         this.elements.winnerText.textContent = `Player ${winner} Wins Wangernumb!`;
         this.elements.finalScore.textContent = `Player ${winner}: ${(winnerTime / 1000).toFixed(2)}s vs Player ${winner === 1 ? 2 : 1}: ${(loserTime / 1000).toFixed(2)}s`;
         this.elements.gameOver.style.display = 'block';
         this.elements.newGame.style.display = 'inline-block';
         this.elements.announcer.textContent = `Player ${winner} found Numberwang fastest! That's Wangernumb!`;
+        this.showWangernumbOverlay();
     }
 
     declareWinner() {
@@ -527,6 +644,7 @@ class NumberwangGame {
         this.elements.gameOver.style.display = 'block';
         this.elements.newGame.style.display = 'inline-block';
         this.elements.announcer.textContent = `Congratulations Player ${winner}! That's Numberwang!`;
+        // Do not show Wangernumb overlay for normal wins
     }
 
     updateScore() {
@@ -545,7 +663,8 @@ class NumberwangGame {
             gameOver: false,
             isWangernumb: false,
             wangernumbTimes: { 1: null, 2: null },
-            wangernumbStartTime: null
+            wangernumbStartTime: null,
+            guaranteedNumberwangValue: null
         };
         
         this.stopTimer();
@@ -560,13 +679,37 @@ class NumberwangGame {
         this.elements.player2Ready.style.display = 'none';
         this.elements.nextRound.style.display = 'none';
         this.elements.newGame.style.display = 'none';
+        this.hideNumberwangOverlay();
+        this.hideWangernumbOverlay();
     }
 
     startGame() {
         this.elements.startGame.style.display = 'none';
         this.gameState.numbers = this.generateNumbers();
+        this.guaranteeNumberwang();
         this.displayNumbers();
         this.startPlayerTurn();
+    }
+
+    guaranteeNumberwang() {
+        // Choose one of the displayed numbers to always be Numberwang
+        const arr = this.gameState.numbers;
+        if (Array.isArray(arr) && arr.length > 0) {
+            const idx = Math.floor(Math.random() * arr.length);
+            this.gameState.guaranteedNumberwangValue = arr[idx];
+        } else {
+            this.gameState.guaranteedNumberwangValue = null;
+        }
+    }
+
+    showWangernumbOverlay() {
+        if (!this.elements.wangernumbOverlay) return;
+        this.elements.wangernumbOverlay.classList.add('show');
+    }
+
+    hideWangernumbOverlay() {
+        if (!this.elements.wangernumbOverlay) return;
+        this.elements.wangernumbOverlay.classList.remove('show');
     }
 }
 
